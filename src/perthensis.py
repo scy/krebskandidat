@@ -48,8 +48,9 @@ class Event:
         for listener in self._listeners:
             try:
                 listener(self)
-            except:
-                pass
+            except Exception as e:
+                print("Event listener for {} event failed:".format(self._name))
+                sys.print_exception(e)
 
 
 
