@@ -10,7 +10,6 @@ Heartbeat(sch, 2)
 wc = WifiClient()
 sch.create_task(wc.watch)
 wc.enable()
-wc._connect()
 
 NTPClient(sch, wc, "fritz.box")
 

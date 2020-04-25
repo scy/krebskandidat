@@ -144,8 +144,7 @@ class WifiClient:
         self._on_connect = Event("connect", self)
         self.on_connect = self._on_connect.listen
 
-        self._wifi = None
-        #self._wifi = network.WLAN(network.STA_IF)
+        self._wifi = network.WLAN(network.STA_IF)
 
     def _statestr(self, state):
         return self._statestrings[state] if state in self._statestrings else "[unknown]"
@@ -156,7 +155,6 @@ class WifiClient:
         status = self._wifi.status()
         if self._enable:
             if status == network.STAT_IDLE:
-                pass
                 self._connect()
         else:
             if status != network.STAT_IDLE:
@@ -168,7 +166,6 @@ class WifiClient:
             self._last_status = status
 
     def _connect(self):
-        self._wifi = network.WLAN(network.STA_IF)
         self._wifi.active(True)
         self._wifi.config(dhcp_hostname=self._hostname)
         #utime.sleep_ms(40) # this seems to help against some issues, see <https://github.com/micropython/micropython/issues/4269>
