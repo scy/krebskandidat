@@ -191,10 +191,6 @@ class WifiClient:
             self._check()
             await scheduler.sleep_ms(5_000)
 
-    def set_time_from_ntp(self):
-        import ntptime
-        ntptime.settime()
-
 
 
 class DHT:
