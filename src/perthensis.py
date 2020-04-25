@@ -114,7 +114,8 @@ class NTPClient:
         return False
 
     def _connected(self, ev):
-        self._try_fetch()
+        if not self.have_time():
+            self._try_fetch()
 
     def have_time(self):
         return utime.localtime()[0] >= 2020
