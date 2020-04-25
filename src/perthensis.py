@@ -194,3 +194,28 @@ class WifiClient:
     def set_time_from_ntp(self):
         import ntptime
         ntptime.settime()
+
+
+
+class DHT:
+    def __init__(self, sensor, interval_s=60):
+        self._sensor = sensor
+        self._interval = int(interval_s)
+        self._temperature = None
+        self._humidity = None
+        self._measurement = Event("measurement", self)
+        self.on_measurement = self._measurement.listen
+
+    def _measure(self):
+        self._sensor.measure()
+        self._temperature = self._sensor.temperature()
+        self._humidity = self._sensor.humidity()
+        self._measurement.trigger()
+
+    def last_measurement(self):
+        return {"temperature_c": self._temperature, "humidity_percent": self._humidity}
+
+    async def watch(self, scheduler):
+        while True:
+            self._measure()
+            await scheduler.sleep(self._interval)
