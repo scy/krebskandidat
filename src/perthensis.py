@@ -82,6 +82,7 @@ class NTPClient:
         if isinstance(custom_host, str):
             ntptime.host = custom_host
         self._settime = ntptime.settime
+        self._next_fetch_in = self.INITIAL_INTERVAL_SECONDS
         self._schedule_next_fetch()
         network.on_connect(self._connected)
         scheduler.create_task(self._watch)
