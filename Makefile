@@ -2,7 +2,7 @@ localcfg := ./localcfg.sh
 wificfg := ./wifi.json
 
 outdir := ./flash
-codefiles := ./src/main.py ./src/perthensis.py
+codefiles := ./src/main.py ./src/perthensis.py ./src/sds011.py
 
 define rshell =
 . $(localcfg) && rshell
