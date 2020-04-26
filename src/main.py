@@ -1,6 +1,9 @@
 from dht import DHT22
+import gc
 import machine
 from perthensis import DHT, Heartbeat, NTPClient, Scheduler, WifiClient
+
+gc.enable()
 
 sch = Scheduler()
 
