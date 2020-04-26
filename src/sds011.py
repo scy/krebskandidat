@@ -80,7 +80,6 @@ class Measurement(Packet):
 
 
 
-
 class SDS011:
     def __init__(self, uart_id, input_callback):
         from machine import UART
@@ -167,11 +166,26 @@ class AdaptiveCycle:
 
     PHASES = ["SLEEP", "VENT", "MEASURE"]
 
-    def __init__(self, sds, interval_minutes=20):
-        self._sds = sds
+    def __init__(self, uart_id, measurement_cb, interval_minutes=20):
+        self._measurement_cb = measurement_cb
+        self._avg = Averager()
+        self._sds = SDS011(uart_id, self._on_measurement)
         self._phase = None
         self.interval_minutes = interval_minutes
         self.mode = self.MODE_OFF
+
+    def _on_measurement(self, meas):
+        self._avg.append(meas)
+        if self.mode == self.MODE_CONTINUOUS and self._avg.len >= 3:
+            self._send_values()
+
+    def _send_values(self):
+        if self._avg.len:
+            try:
+                self._measurement_cb(self._avg)
+            except:
+                pass
+            self._avg.reset()
 
     @property
     def interval_minutes(self):
@@ -214,10 +228,13 @@ class AdaptiveCycle:
         if phase == self.PHASE_SLEEP:
             self._sds.use_poll_mode()
             self._sds.sleep()
+            self._send_values()
         elif phase == self.PHASE_VENT:
+            self._avg.reset()
             self._sds.wake()
             self._sds.use_poll_mode()
         elif phase == self.PHASE_MEASURE:
+            self._avg.reset()
             self._sds.wake()
             self._sds.use_push_mode()
         else:
@@ -241,6 +258,51 @@ class AdaptiveCycle:
                     elif self.phase == self.PHASE_MEASURE:
                         self.phase = self.PHASE_SLEEP
                         self._countdown = (60 * self.interval_minutes) - 40
+
+
+
+class Averager:
+    def __init__(self):
+        self.reset()
+
+    @staticmethod
+    def _minmaxavg(lst):
+        return {
+            "min": min(lst),
+            "max": max(lst),
+            "avg": sum(lst) / float(len(lst)),
+            "count": len(lst),
+        }
+
+    def reset(self):
+        self._pm10 = []
+        self._pm25 = []
+
+    def append(self, measurement):
+        assert isinstance(measurement, Measurement)
+        values = measurement.values
+        self._pm10.append(values["pm10"])
+        self._pm25.append(values["pm25"])
+
+    @property
+    def len(self):
+        return len(self._pm10)
+
+    @property
+    def values(self):
+        return {
+            "pm10": self._minmaxavg(self._pm10),
+            "pm25": self._minmaxavg(self._pm25),
+        }
+
+    @property
+    def flat_values(self):
+        d = {}
+        values = self.values
+        for kind in ["pm10", "pm25"]:
+            for k, v in values[kind].items():
+                d[kind + "_" + k] = v
+        return d
 
 
 # p = Packet()

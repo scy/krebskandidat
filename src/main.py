@@ -32,9 +32,8 @@ dht = DHT(DHT22(machine.Pin(15)))
 dht.on_measurement(lambda event: send_to_iotplotter("<your_feed_id>", "<your_api_key>", event.more().last_measurement()))
 sch.create_task(dht.watch)
 
-sds = SDS011(2, lambda pkt: print(str(pkt)))
-sch.create_task(sds.watch)
-ac = AdaptiveCycle(sds, 1)
+ac = AdaptiveCycle(2, lambda avg: send_to_iotplotter("<your_feed_id>", "<your_api_key>", avg.flat_values))
+sch.create_task(ac._sds.watch)
 sch.create_task(ac.watch)
 ac.mode = ac.MODE_INTERVAL
 
