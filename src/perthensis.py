@@ -119,8 +119,18 @@ class NTPClient:
         if not self.have_time():
             self._try_fetch()
 
-    def have_time(self):
+    @staticmethod
+    def have_time():
         return utime.localtime()[0] >= 2020
+
+    @classmethod
+    def time(cls):
+        time = utime.time()
+        # Some MicroPython ports use 2020-01-01 as Epoch 0 instead of 1970-01-01.
+        # As a heuristic, if time is less than 50 years worth of seconds (1970 to
+        # 2020, when this library was released), expect this port to have an offset.
+        # This will break on boards with offset after 2050-01-01.
+        return time + 946_684_800 if time < 2_524_608_000 else time
 
 
 
