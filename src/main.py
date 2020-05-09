@@ -4,6 +4,26 @@ import machine
 from perthensis import DHT, Heartbeat, NTPClient, Scheduler, WifiClient
 from sds011 import AdaptiveCycle, SDS011
 
+class IoTPlotter:
+    def __init__(self, feed_id, api_key):
+        self.feed_id = feed_id
+        self.api_key = api_key
+
+    def send(self, values):
+        import gc, urequests, utime
+        gc.collect()
+        epoch = ntp.time() if ntp.have_time() else 0
+        data = "\n".join(["{0},{1},{2}".format(epoch, key, val) for (key, val) in values.items()])
+        print(data)
+        res = urequests.post(
+            "https://iotplotter.com/api/v2/feed/{0}.csv".format(self.feed_id),
+            headers={"api-key": self.api_key},
+            data=data
+            )
+        res.close()
+
+iotp = IoTPlotter("<your_feed_id>", "<your_api_key>")
+
 gc.enable()
 
 sch = Scheduler()
@@ -16,24 +36,11 @@ wc.enable()
 
 ntp = NTPClient(sch, wc, "fritz.box")
 
-def send_to_iotplotter(feed_id, api_key, values):
-    import gc, urequests, utime
-    gc.collect()
-    epoch = ntp.time() if ntp.have_time() else 0
-    data = "\n".join(["{0},{1},{2}".format(epoch, key, val) for (key, val) in values.items()])
-    print(data)
-    res = urequests.post(
-        "https://iotplotter.com/api/v2/feed/{0}.csv".format(feed_id),
-        headers={"api-key": api_key},
-        data=data
-        )
-    res.close()
-
 dht = DHT(DHT22(machine.Pin(15)))
-dht.on_measurement(lambda event: send_to_iotplotter("<your_feed_id>", "<your_api_key>", event.more().last_measurement()))
+dht.on_measurement(lambda event: iotp.send(event.more().last_measurement()))
 sch.create_task(dht.watch)
 
-ac = AdaptiveCycle(2, lambda avg: send_to_iotplotter("<your_feed_id>", "<your_api_key>", avg.flat_values))
+ac = AdaptiveCycle(2, lambda avg: iotp.send(avg.flat_values))
 sch.create_task(ac._sds.watch)
 sch.create_task(ac.watch)
 ac.mode = ac.MODE_INTERVAL
