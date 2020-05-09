@@ -14,12 +14,13 @@ wc = WifiClient()
 sch.create_task(wc.watch)
 wc.enable()
 
-NTPClient(sch, wc, "fritz.box")
+ntp = NTPClient(sch, wc, "fritz.box")
 
 def send_to_iotplotter(feed_id, api_key, values):
     import gc, urequests, utime
     gc.collect()
-    data = "\n".join(["0,{1},{2}".format(key, val) for (key, val) in values.items()])
+    epoch = ntp.time() if ntp.have_time() else 0
+    data = "\n".join(["{0},{1},{2}".format(epoch, key, val) for (key, val) in values.items()])
     print(data)
     res = urequests.post(
         "https://iotplotter.com/api/v2/feed/{0}.csv".format(feed_id),
