@@ -9,12 +9,26 @@ class IoTPlotter:
     def __init__(self, feed_id, api_key):
         self.feed_id = feed_id
         self.api_key = api_key
+        self._data = []
 
     def send(self, values):
-        import gc, urequests, utime
-        gc.collect()
+        import utime
         epoch = ntp.time() if ntp.have_time() else 0
-        data = "\n".join(["{0},{1},{2}".format(epoch, key, val) for (key, val) in values.items()])
+        self._data.extend(["{0},{1},{2}".format(epoch, key, val) for (key, val) in values.items()])
+        if epoch == 0:
+            self.push()
+
+    def watch(self, scheduler):
+        while True:
+            await scheduler.sleep(10)
+            self.push()
+
+    def push(self):
+        import gc, urequests
+        if not self._data:
+            return
+        gc.collect()
+        data = "\n".join(self._data)
         print(data)
         res = urequests.post(
             "https://iotplotter.com/api/v2/feed/{0}.csv".format(self.feed_id),
@@ -22,14 +36,17 @@ class IoTPlotter:
             data=data
             )
         res.close()
+        self._data = []
 
-iotp = IoTPlotter("<your_feed_id>", "<your_api_key>")
 
 gc.enable()
 
 sch = Scheduler()
 
 Heartbeat(sch, 2)
+
+iotp = IoTPlotter("<your_feed_id>", "<your_api_key>")
+sch.create_task(iotp.watch)
 
 wc = WifiClient()
 sch.create_task(wc.watch)
