@@ -1,7 +1,8 @@
 from dht import DHT22
 import gc
 import machine
-from perthensis import DHT, Heartbeat, NTPClient, Scheduler, WifiClient
+from machine import Pin
+from perthensis import Debouncer, DHT, Heartbeat, NTPClient, Scheduler, WifiClient
 from sds011 import AdaptiveCycle, SDS011
 
 class IoTPlotter:
@@ -36,7 +37,7 @@ wc.enable()
 
 ntp = NTPClient(sch, wc, "fritz.box")
 
-dht = DHT(DHT22(machine.Pin(15)))
+dht = DHT(DHT22(Pin(15)))
 dht.on_measurement(lambda event: iotp.send(event.more().last_measurement()))
 sch.create_task(dht.watch)
 
@@ -44,5 +45,10 @@ ac = AdaptiveCycle(2, lambda avg: iotp.send(avg.flat_values))
 sch.create_task(ac._sds.watch)
 sch.create_task(ac.watch)
 ac.mode = ac.MODE_INTERVAL
+
+door_power = Pin(13, Pin.OUT, value=1)
+door = Debouncer(12, Pin.PULL_DOWN, 3000)
+door.on_change(lambda event: print("Door:", event.more().value()))
+sch.create_task(door.watch)
 
 sch.run_forever()
