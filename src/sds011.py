@@ -170,7 +170,8 @@ class AdaptiveCycle:
         self._measurement_cb = measurement_cb
         self._avg = Averager()
         self._sds = SDS011(uart_id, self._on_measurement)
-        self._phase = None
+        self._phase = self.PHASE_SLEEP
+        self._mode = self.MODE_OFF
         self.interval_minutes = interval_minutes
         self.mode = self.MODE_OFF
 
@@ -204,12 +205,12 @@ class AdaptiveCycle:
 
     @mode.setter
     def mode(self, mode):
+        if self._mode == mode:
+            return
         if mode == self.MODE_OFF:
             self.phase = self.PHASE_SLEEP
-            self._countdown = None
         elif mode == self.MODE_INTERVAL:
-            self.phase = self.PHASE_VENT
-            self._countdown = 30
+            self.phase = self.PHASE_SLEEP if self.mode == self.MODE_CONTINUOUS else self.PHASE_VENT
         elif mode == self.MODE_CONTINUOUS:
             self.phase = self.PHASE_VENT
             self._countdown = 20
@@ -226,14 +227,17 @@ class AdaptiveCycle:
         if self._phase == phase:
             return
         if phase == self.PHASE_SLEEP:
+            self._countdown = None if self.mode == self.MODE_OFF else (60 * self.interval_minutes) - 40
             self._sds.use_poll_mode()
             self._sds.sleep()
             self._send_values()
         elif phase == self.PHASE_VENT:
+            self._countdown = 30
             self._avg.reset()
             self._sds.wake()
             self._sds.use_poll_mode()
         elif phase == self.PHASE_MEASURE:
+            self._countdown = 10 if self._mode == self.MODE_INTERVAL else None
             self._avg.reset()
             self._sds.wake()
             self._sds.use_push_mode()
@@ -251,13 +255,10 @@ class AdaptiveCycle:
                 if self._countdown <= 0:
                     if self.phase == self.PHASE_SLEEP:
                         self.phase = self.PHASE_VENT
-                        self._countdown = 30
                     elif self.phase == self.PHASE_VENT:
                         self.phase = self.PHASE_MEASURE
-                        self._countdown = 10 if self.mode == self.MODE_INTERVAL else None
                     elif self.phase == self.PHASE_MEASURE:
                         self.phase = self.PHASE_SLEEP
-                        self._countdown = (60 * self.interval_minutes) - 40
 
 
 
