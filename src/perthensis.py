@@ -1,4 +1,4 @@
-from machine import Pin, Signal
+from machine import Pin, Signal, disable_irq, enable_irq
 import network
 import sys
 import uasyncio
@@ -72,6 +72,34 @@ class Heartbeat:
             await sch.sleep_ms(100)
             self._sig.off()
             await sch.sleep_ms(750)
+
+
+
+class Debouncer:
+    def __init__(self, pin_id, pull=None, threshold_ms=100, check_ms=25):
+        self._irq_fired_at = None
+        self._unchanged_since = None
+        self._threshold = int(threshold_ms)
+        self._check = int(check_ms)
+        self._pin = Pin(pin_id, Pin.IN, pull)
+        self._on_change = Event("change", self._pin)
+        self.on_change = self._on_change.listen
+        self._pin.irq(self._irq_handler, Pin.IRQ_FALLING | Pin.IRQ_RISING)
+
+    def _irq_handler(self, pin):
+        self._irq_fired_at = utime.ticks_ms()
+
+    def watch(self, scheduler):
+        while True:
+            await scheduler.sleep_ms(self._check)
+            irq = disable_irq()
+            if self._irq_fired_at is not None:
+                self._unchanged_since = self._irq_fired_at
+                self._irq_fired_at = None
+            enable_irq(irq)
+            if self._unchanged_since is not None and utime.ticks_diff(utime.ticks_ms(), self._unchanged_since) > self._threshold:
+                self._unchanged_since = None
+                self._on_change.trigger()
 
 
 
