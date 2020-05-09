@@ -63,9 +63,14 @@ sch.create_task(ac._sds.watch)
 sch.create_task(ac.watch)
 ac.mode = ac.MODE_INTERVAL
 
+def sds_mode_switch(event):
+    global ac
+    door_open = not event.more().value()
+    print("door open?", door_open)
+    ac.mode = ac.MODE_CONTINUOUS if door_open else ac.MODE_INTERVAL
 door_power = Pin(13, Pin.OUT, value=1)
 door = Debouncer(12, Pin.PULL_DOWN, 3000)
-door.on_change(lambda event: print("Door:", event.more().value()))
+door.on_change(sds_mode_switch)
 sch.create_task(door.watch)
 
 sch.run_forever()
