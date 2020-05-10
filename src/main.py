@@ -30,12 +30,15 @@ class IoTPlotter:
         gc.collect()
         data = "\n".join(self._data)
         print(data)
-        res = urequests.post(
-            "https://iotplotter.com/api/v2/feed/{0}.csv".format(self.feed_id),
-            headers={"api-key": self.api_key},
-            data=data
-            )
-        res.close()
+        try:
+            res = urequests.post(
+                "https://iotplotter.com/api/v2/feed/{0}.csv".format(self.feed_id),
+                headers={"api-key": self.api_key},
+                data=data
+                )
+            res.close()
+        except:
+            pass
         self._data = []
 
 
